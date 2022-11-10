@@ -10,8 +10,9 @@
 #' @param nSampled Number of sampled individuals (can be NA for any)
 #' @return A N*3 matrix in the following format with one row per infected host, first column is time of infection, second column is time of sampling, third column is infector
 #' @export
-makeTTree <-function(off.r,off.p,pi,w.shape,w.scale,ws.shape=w.shape,ws.scale=w.scale,maxTime=Inf,nSampled=NA) { 
-  ttree<-matrix(0,1,3)
+makeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.shape,ws.scale=w.scale,maxTime=Inf,nSampled=NA) { 
+  # added parameter above host.type.probs for a vector of probabilities of host types
+  ttree<-matrix(0,1,4) # 4 columns of ttree instead of 3
   prob<-0
   todo<-1
   while (length(todo)>0) {
@@ -30,7 +31,9 @@ makeTTree <-function(off.r,off.p,pi,w.shape,w.scale,ws.shape=w.shape,ws.scale=w.
       ttree[todo[1],2]<-NA}
     
     offspring<-rnbinom(1,off.r,1-off.p)
-    prob<-prob+log(dnbinom(offspring,off.r,1-off.p))
+    offspring.types <- rmultinom(1, size = offspring, prob = host.type.probs) # get host types with multinomial dist
+    prob<-prob+log(dnbinom(offspring,off.r,1-off.p)*dmultinom(offspring.types, prob = host.type.probs)) # add in multinomial prob when calculating tree prob
+    # below need to add host types to ttree as 4th column
     if (offspring>0) {
       for (i in 1:offspring) {
         draw<-rgamma(1,shape=w.shape,scale=w.scale)

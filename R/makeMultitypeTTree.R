@@ -10,8 +10,9 @@
 #' @param nSampled Number of sampled individuals (can be NA for any)
 #' @return A N*3 matrix in the following format with one row per infected host, first column is time of infection, second column is time of sampling, third column is infector
 #' @export
-makeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.shape,ws.scale=w.scale,maxTime=Inf,nSampled=NA) { 
+makeMultitypeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.shape,ws.scale=w.scale,maxTime=Inf,nSampled=NA) { 
   # added parameter above host.type.probs for a vector of probabilities of host types
+  # add warning if the probs don't add to 1?
   ttree<-matrix(0,1,4) # 4 columns of ttree instead of 3
   prob<-0
   todo<-1
@@ -29,23 +30,34 @@ makeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.s
       #This individual is not sampled
       prob<-prob+log(1-pi)
       ttree[todo[1],2]<-NA}
-    
+    host.type <- sample(1:length(host.type.probs), size = 1, prob = host.type.probs) # get each host type individually - easier
+    ttree[todo[1],4] <- host.type # add it to the tree
+    prob <- prob + log(host.type.probs[host.type]) # add to the tree loglik
     offspring<-rnbinom(1,off.r,1-off.p)
-    offspring.types <- rmultinom(1, size = offspring, prob = host.type.probs) # get host types with multinomial dist
-    prob<-prob+log(dnbinom(offspring,off.r,1-off.p)*dmultinom(offspring.types, prob = host.type.probs)) # add in multinomial prob when calculating tree prob
-    # below need to add host types to ttree as 4th column
+    prob<-prob+log(dnbinom(offspring,off.r,1-off.p))
     if (offspring>0) {
       for (i in 1:offspring) {
         draw<-rgamma(1,shape=w.shape,scale=w.scale)
         prob<-prob+log(dgamma(draw,shape=w.shape,scale=w.scale))
         if (ttree[todo[1],1]+draw>maxTime) next
-        ttree<-rbind(ttree,c(ttree[todo[1],1]+draw,0,todo[1]))
+        ttree<-rbind(ttree,c(ttree[todo[1],1]+draw,0,todo[1],0))
         todo<-c(todo,nrow(ttree))
       }
     }
     todo<-todo[-1] 
   }
-  
+  ttree <- pruneTTree(ttree, nSampled, maxTime)
+  pruned <- ttree[[2]] # pruneTTree returns list of pruned and the actual tree now
+  ttree <- ttree[[1]]
+  ttree <- rmNSampledNChild(ttree)
+  ttree <- rmRoot(ttree)
+  ttree <- reorderHosts(ttree)
+  l=list(ttree=ttree,nam=sprintf('%d',seq(1:length(which(!is.na(ttree[,2]))))),prob=prob,pruned=pruned)
+  class(l)<-'ttree'
+  return(l)
+}
+
+pruneTTree <- function(ttree, nSampled, maxTime){
   #Prune down number of sampled individuals if needed (only for ongoing outbreaks)
   pruned=0
   samTimes=ttree[which(!is.na(ttree[,2])),2]
@@ -55,7 +67,10 @@ makeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.s
     pruned=maxTime-cutoff
     ttree[ttree[,2]>cutoff,2]=NA
   }
-  
+  return(list(ttree,pruned))
+}
+
+rmNSampledNChild <- function(ttree){
   #Remove infected individuals who are not sampled and have no children
   while (TRUE) {
     if (nrow(ttree)==1 && is.na(ttree[1,2])) {return(list(ttree=NULL,prob=NULL,pruned=0))} #Nothing left
@@ -64,8 +79,11 @@ makeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.s
     if (length(torem)==0) {break}
     ttree<-ttree[setdiff(1:nrow(ttree),torem),,drop=FALSE]
     for (i in 1:nrow(ttree)) {ttree[i,3]=ttree[i,3]-length(which(torem<ttree[i,3]))}
-  }  
-  
+  }
+  return(ttree)
+}
+
+rmRoot <- function(ttree){
   #Remove root if not sampled and only has one child
   while (TRUE) {
     if (nrow(ttree)==1 && is.na(ttree[1,2])) {return(list(ttree=NULL,prob=NULL,pruned=0))} #Nothing left
@@ -76,13 +94,21 @@ makeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.s
       ttree[,3]=ttree[,3]-1
     } else {break}
   }
-  
+  return(ttree)
+}
+
+reorderHosts <- function(ttree){
   #Reorder so that sampled hosts are first
   order<-c(which(!is.na(ttree[,2])),which(is.na(ttree[,2])))
   invorder=1:length(order);invorder[order]=1:length(order)
   ttree<-ttree[order,,drop=FALSE]
   ttree[ttree[,3]>0,3]=invorder[ttree[ttree[,3]>0,3]]
-  l=list(ttree=ttree,nam=sprintf('%d',seq(1:length(which(!is.na(ttree[,2]))))),prob=prob,pruned=pruned)
-  class(l)<-'ttree'
-  return(l)
+  return(ttree)
 }
+
+
+
+# test w/params from simulateOutbreak defaults
+# set.seed(11)
+# tree <- makeMultitypeTTree(host.type.probs = c(0.3, 0.5, 0.2), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
+# tree$ttree

@@ -19,7 +19,7 @@ makeMultitypeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.
   while (length(todo)>0) {
     rand<-runif(1)
     if (rand<pi) {
-      #This individual is sampled
+      #This individual is sampled 
       prob<-prob+log(pi)
       draw<-rgamma(1,shape=ws.shape,scale=ws.scale)
       if (ttree[todo[1],1]+draw<maxTime)
@@ -47,10 +47,12 @@ makeMultitypeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.
     todo<-todo[-1] 
   }
   ttree <- pruneTTree(ttree, nSampled, maxTime)
-  pruned <- ttree[[2]] # pruneTTree returns list of pruned and the actual tree now
+  pruned <- ttree[[2]] # pruneTTree returns list of pruned indicator and the actual tree now
   ttree <- ttree[[1]]
   ttree <- rmNSampledNChild(ttree)
+  if (is.null(ttree[[2]])) { return(ttree) } else { ttree <- ttree[[1]] } # rm functions now return tree and indicator of non-null tree
   ttree <- rmRoot(ttree)
+  if (is.null(ttree[[2]])) { return(ttree) } else { ttree <- ttree[[1]] }
   ttree <- reorderHosts(ttree)
   l=list(ttree=ttree,nam=sprintf('%d',seq(1:length(which(!is.na(ttree[,2]))))),prob=prob,pruned=pruned)
   class(l)<-'ttree'
@@ -80,7 +82,7 @@ rmNSampledNChild <- function(ttree){
     ttree<-ttree[setdiff(1:nrow(ttree),torem),,drop=FALSE]
     for (i in 1:nrow(ttree)) {ttree[i,3]=ttree[i,3]-length(which(torem<ttree[i,3]))}
   }
-  return(ttree)
+  return(list(ttree, notNull = T)) # return T also if tree is not null
 }
 
 rmRoot <- function(ttree){
@@ -94,7 +96,7 @@ rmRoot <- function(ttree){
       ttree[,3]=ttree[,3]-1
     } else {break}
   }
-  return(ttree)
+  return(list(ttree, notNull = T)) # again returning T if not null
 }
 
 reorderHosts <- function(ttree){
@@ -109,6 +111,9 @@ reorderHosts <- function(ttree){
 
 
 # test w/params from simulateOutbreak defaults
-# set.seed(11)
-# tree <- makeMultitypeTTree(host.type.probs = c(0.3, 0.5, 0.2), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
-# tree$ttree
+set.seed(4)
+tree <- makeMultitypeTTree(host.type.probs = c(0.5,0.5), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
+while (is.null(tree$ttree)) {
+  tree <- makeMultitypeTTree(host.type.probs = c(1), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
+}
+tree$ttree

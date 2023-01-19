@@ -1,6 +1,7 @@
 #' Simulate a transmission tree
-#' @param off.r First parameter of the negative binomial distribution for offspring number
-#' @param off.p Second parameter of the negative binomial distribution for offspring number
+#' @param host.type.probs Vector of probabilities of the different host types within the population
+#' @param off.r First parameter of the negative binomial distribution for offspring number. Controls dispersion and does not change with host type.
+#' @param off.p Vector of second parameters of the negative binomial distribution for offspring number, same length as host.type.probs. Intuition as distinct "transmission probability" for each host type.
 #' @param pi probability of sampling an infected individual
 #' @param w.shape Shape parameter of the Gamma probability density function representing the generation time
 #' @param w.scale Scale parameter of the Gamma probability density function representing the generation time 
@@ -33,8 +34,9 @@ makeMultitypeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.
     host.type <- sample(1:length(host.type.probs), size = 1, prob = host.type.probs) # get each host type individually - easier
     ttree[todo[1],4] <- host.type # add it to the tree
     prob <- prob + log(host.type.probs[host.type]) # add to the tree loglik
-    offspring<-rnbinom(1,off.r,1-off.p)
-    prob<-prob+log(dnbinom(offspring,off.r,1-off.p))
+    # now change offspring distribution by host type
+    offspring<-rnbinom(1,off.r,1-off.p[host.type]) # since host types are already "indices"
+    prob<-prob+log(dnbinom(offspring,off.r,1-off.p[host.type]))
     if (offspring>0) {
       for (i in 1:offspring) {
         draw<-rgamma(1,shape=w.shape,scale=w.scale)
@@ -114,6 +116,6 @@ reorderHosts <- function(ttree){
 set.seed(4)
 tree <- makeMultitypeTTree(host.type.probs = c(0.5,0.5), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
 while (is.null(tree$ttree)) {
-  tree <- makeMultitypeTTree(host.type.probs = c(1), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
+  tree <- makeMultitypeTTree(host.type.probs = c(0.5,0.5), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
 }
 tree$ttree

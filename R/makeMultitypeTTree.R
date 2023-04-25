@@ -9,7 +9,7 @@
 #' @param ws.scale Scale parameter of the Gamma probability density function representing the sampling time 
 #' @param maxTime Duration of simulation (can be Inf)
 #' @param nSampled Number of sampled individuals (can be NA for any)
-#' @return A N*3 matrix in the following format with one row per infected host, first column is time of infection, second column is time of sampling, third column is infector
+#' @return A N*4 matrix in the following format with one row per infected host, first column is time of infection, second column is time of sampling, third column is infector, fourth column is host type
 #' @export
 makeMultitypeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.shape=w.shape,ws.scale=w.scale,maxTime=Inf,nSampled=NA) { 
   # added parameter above host.type.probs for a vector of probabilities of host types
@@ -52,9 +52,9 @@ makeMultitypeTTree <-function(host.type.probs,off.r,off.p,pi,w.shape,w.scale,ws.
   pruned <- ttree[[2]] # pruneTTree returns list of pruned indicator and the actual tree now
   ttree <- ttree[[1]]
   ttree <- rmNSampledNChild(ttree)
-  if (is.null(ttree[[2]])) { return(ttree) } else { ttree <- ttree[[1]] } # rm functions now return tree and indicator of non-null tree
+  if (is.list(ttree)) { return(ttree) } # will only be a list instead of matrix if we are returning null tree
   ttree <- rmRoot(ttree)
-  if (is.null(ttree[[2]])) { return(ttree) } else { ttree <- ttree[[1]] }
+  if (is.list(ttree)) { return(ttree) }
   ttree <- reorderHosts(ttree)
   l=list(ttree=ttree,nam=sprintf('%d',seq(1:length(which(!is.na(ttree[,2]))))),prob=prob,pruned=pruned)
   class(l)<-'ttree'
@@ -84,7 +84,7 @@ rmNSampledNChild <- function(ttree){
     ttree<-ttree[setdiff(1:nrow(ttree),torem),,drop=FALSE]
     for (i in 1:nrow(ttree)) {ttree[i,3]=ttree[i,3]-length(which(torem<ttree[i,3]))}
   }
-  return(list(ttree, notNull = T)) # return T also if tree is not null
+  return(ttree)
 }
 
 rmRoot <- function(ttree){
@@ -98,7 +98,7 @@ rmRoot <- function(ttree){
       ttree[,3]=ttree[,3]-1
     } else {break}
   }
-  return(list(ttree, notNull = T)) # again returning T if not null
+  return(ttree)
 }
 
 reorderHosts <- function(ttree){
@@ -114,8 +114,8 @@ reorderHosts <- function(ttree){
 
 # test w/params from simulateOutbreak defaults
 set.seed(4)
-tree <- makeMultitypeTTree(host.type.probs = c(0.5,0.5), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
+tree <- NULL
 while (is.null(tree$ttree)) {
-  tree <- makeMultitypeTTree(host.type.probs = c(0.5,0.5), off.r=1, off.p=0.5, pi=0.5, w.shape=2, w.scale=1)
+  tree <- makeMultitypeTTree(host.type.probs = c(0.5,0.5), off.r=1, off.p=c(0.5, 0.3), pi=0.5, w.shape=2, w.scale=1)
 }
 tree$ttree

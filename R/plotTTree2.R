@@ -11,7 +11,9 @@
 plotTTree2 = function(ttree,showLabels=TRUE,showMissingLinks=0,maxTime=NA,cex=1) {
   nam=ttree$nam
   ttree=ttree$ttree
-  ttree=cbind(ttree,rep(1,nrow(ttree)))
+  multitype <- ifelse( ncol(ttree) == 4, yes = T, no = F )
+  if ( multitype ) ttree <- cbind(ttree[,1:3], rep(1,nrow(ttree)), ttree[,4]) 
+  else ttree <- cbind(ttree,rep(1,nrow(ttree))) 
   if (showMissingLinks>0) {
     i=which(is.na(ttree[,2]))[1]
     while (i<nrow(ttree)) {
@@ -53,10 +55,12 @@ plotTTree2 = function(ttree,showLabels=TRUE,showMissingLinks=0,maxTime=NA,cex=1)
   ma=max(ttree[which(!is.na(ttree[,1])),1])
   if (!is.na(maxTime)) ma=maxTime
   plot(c(),c(),xlim=c(mi,ma),ylim=c(0,n+1),xlab='',ylab='')
-  pal=grDevices::gray.colors(max(ttree[,4]))
+  if ( multitype ) pal <- grDevices::rainbow(max(ttree[,5]))
+  else pal <- grDevices::gray.colors(max(ttree[,4]))
   for (i in 1:n) {
     if (ttree[i,3]!=0) {
-      dircol=pal[ttree[i,4]]
+      if ( multitype ) dircol <- pal[ttree[i,5]]
+      else dircol <- pal[ttree[i,4]] 
       #arrows(ttree[i,1],ys[ttree[i,3]],ttree[i,1],ys[i],length=0)
       arrows(ttree[ttree[i,3],1],ys[ttree[i,3]],ttree[i,1],ys[i],length=0,col=dircol)
     }

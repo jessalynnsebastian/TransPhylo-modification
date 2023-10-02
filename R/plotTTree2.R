@@ -65,10 +65,12 @@ plotTTree2 = function(ttree,showLabels=TRUE, hostTypeNames = NA,showMissingLinks
     }
     #ma=max(ttree[i,1],ttree[which(ttree[,3]==i),1])
     #mi=min(ttree[i,1],ttree[i,1],ttree[which(ttree[,3]==i),1])
-    if (showLabels && !is.na(ttree[i,2])) text(ttree[i,1],ys[i],nam[i],pos=4,cex=cex)
+    # if (showLabels && !is.na(ttree[i,2])) text(ttree[i,1],ys[i],nam[i],pos=4,cex=cex) THIS LINE GIVES LABELS ONLY TO OBSERVED HOSTS
+    if (showLabels) text(ttree[i,1],ys[i],i,pos=4,cex=cex) ## I ADDED THIS LINE TO LABEL ALL HOSTS TO CHECK THINGS
     #lines(c(mi,ma),c(ys[i],ys[i]))
   }
-  type_colors <- grDevices::rainbow(max(ttree[,5]))
+  if ( multitype ) type_colors <- grDevices::rainbow(max(ttree[,5]))
+  else type_colors <- "black"
   for (i in 1:n) {
     #points(ttree[i,1],ys[i],pch=21,bg='black',cex=0.2+0.2*(!is.na(ttree[i,2])))
     points(ttree[i,1], ys[i],

@@ -61,7 +61,7 @@ simulateMultitypeOutbreak = function(host.type.probs = c(1), off.r=1,off.p=c(0.5
   }
   
   #Glue these trees together
-  truth<-.glueTrees(ttree,wtree)
+  truth<-.glueMultitypeTrees(ttree,wtree)
   #Glue returns ctree without host types (uses .computeHost at end to get hosts)
   
   truth[,1]<-truth[,1]+dateStartOutbreak

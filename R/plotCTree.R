@@ -2,16 +2,18 @@
 #' @param tree Combined phylogenetic/transmission tree
 #' @param showLabels Whether or not to show the labels 
 #' @param showStars Whether or not to show stars representing transmission events
-#' @param cols Colors to use for hosts
+#' @param cols Colors to use for hosts. If multitype, colors represent host types. Otherwise, colors represent individual hosts.
+#' @param hostTypeNames Vector of names for host types, ordered.
 #' @param maxTime Maximum time to show on the x axis
 #' @param cex Expansion factor
 #' @return Returns invisibly the first parameter
 #' @examples
 #' plotCTree(simulateOutbreak())
 #' @export
-plotCTree = function(tree,showLabels=TRUE,showStars=TRUE,cols=NA,maxTime=NA,cex=1)  {
+plotCTree = function(tree,showLabels=TRUE,showStars=TRUE,cols=NA, hostTypeNames = NA, maxTime=NA,cex=1)  {
   nam=tree$nam
   tree=tree$ctree
+  multitype <- ifelse( ncol(tree) == 5, T, F )
   nsam <- sum(tree[ ,2]+tree[ ,3] == 0) 
   nh <- nrow(tree)-3*nsam+1
   ntot <- nsam+nh
@@ -21,9 +23,15 @@ plotCTree = function(tree,showLabels=TRUE,showStars=TRUE,cols=NA,maxTime=NA,cex=
   plot(0,0,type='l',xlim=c(min(tree[,1]),ifelse(is.na(maxTime),max(tree[,1]),maxTime)),ylim=c(0,nsam+1),xlab='',ylab='')
   host <- tree[ ,4] 
   if (ntot>1) {
-      if (is.na(cols[1])) grDevices::palette(grDevices::rainbow(min(1024,ntot)))#Need as many unique colors as there are hosts. If there are more than 1024 hosts, colors are recycled.
-    else grDevices::palette(cols)
+    if (multitype) { 
+      if (is.na(cols[1])) pal <- grDevices::palette(grDevices::rainbow(max(tree[,5]))) # Need as many unique colors as host types.
+      else pal <- grDevices::palette(cols)
     }
+    else {
+      if (is.na(cols[1])) pal <- grDevices::palette(grDevices::rainbow(min(1024,ntot))) # Need as many unique colors as there are hosts. If there are more than 1024 hosts, colors are recycled.
+      else pal <- grDevices::palette(cols)
+    }
+  }
   
   #Determine ys for leaves
   root<-which(host==0)
@@ -64,7 +72,8 @@ plotCTree = function(tree,showLabels=TRUE,showStars=TRUE,cols=NA,maxTime=NA,cex=
     w <- todo[1,1] 
     x <- todo[1,2] 
     y <- ys[w] 
-    col=host[w]
+    # EDIT below: only if column 5 exists.
+    col = pal[unique(tree[tree[,4] == host[w],5])]
     if (tree[w,2] == 0 && tree[w,3] == 0)  { 
       #Leaf node 
       lines(c(x,tree[w,1]),c(y,y),col=col,lwd=2) 
@@ -72,6 +81,7 @@ plotCTree = function(tree,showLabels=TRUE,showStars=TRUE,cols=NA,maxTime=NA,cex=
     } else if (tree[w,3] == 0)  { 
       #Transmission node 
       lines(c(x,tree[w,1]),c(y,y),col=col,lwd=2) 
+      # MINE, EDIT OUT LATER: HOST LABELS FOR ALL UNOBSERVED
       #points(tree[w,1],y,col = 'red',pch=8) 
       todo <- rbind(todo,cbind(tree[w,2],tree[w,1])) 
     } else { 
@@ -101,5 +111,8 @@ plotCTree = function(tree,showLabels=TRUE,showStars=TRUE,cols=NA,maxTime=NA,cex=
     } 
     todo <- rbind(todo[-1,])
   }
+  if ( is.na(hostTypeNames) ) hostTypeNames <- paste( "Type", 1:max(tree[,5]) )
+  if ( multitype ) legend('topright', legend = hostTypeNames, fill = pal, title = "Host Type")
   return(invisible(tree))
 } 
+plotCTree(outbreak)
